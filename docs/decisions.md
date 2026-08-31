@@ -589,3 +589,52 @@ before asserting anything about its value.
 And every spec triggers a scan of the whole universe, all queued behind one
 server-side pacer. Three parallel workers made each spec three times slower and
 timed all of them out.
+
+---
+
+## 2026-09-01 — A pattern is not reported until H3 is confirmed
+
+**Decision:** the earliest reported state is `h3_formed` — H1, L1, H2, L2 and
+H3. The four-pivot `forming` state is gone, and `TriangleStatus` no longer
+has it. §6.3 rule 6 and §6.7 are updated.
+
+**Why (user's call):** four pivots is a shape that has not yet held its
+resistance a third time. Reporting it hands the reader a forecast; reporting it
+at H3 hands them a pattern whose next low is the thing worth watching for, and
+leaves the judgement about L3 where it belongs. Under the §6.1 mirror this
+inverts for free — a descending pattern is reported once its third *low* is
+confirmed, waiting on H3 — so the row label follows the direction: "Waiting L3"
+ascending, "Waiting H3" descending.
+
+**How H3 is chosen:** the highest *confirmed* swing high after L2. Confirmed
+matters — an unconfirmed high repaints, and the whole point of waiting for H3
+is that it is a fact. Taking the highest is not a preference for large
+candidates: a later, higher high does not make a better H3, it makes the
+pattern fail rule 2, which is the correct outcome.
+
+**Rule 7 now measures from the last low, not the last pivot.** With five pivots
+the last pivot is H3, and the stretch between L2 and H3 still has to have held
+support.
+
+---
+
+## 2026-09-01 — Rule 2 and rule 3 boundaries are tested as predicates
+
+**Decision:** `src/lib/patterns/rules.ts` holds `highStep`, `highStepOk`,
+`fLow` and `fLowOk` as pure functions, and §11's boundary tables test them
+directly rather than through a synthetic series.
+
+**Why:** requiring H3 made the old end-to-end boundary tests impossible to
+write, and the reason is worth recording. **An `f_low` near the 0.95 ceiling
+cannot produce a triangle with an H3 at all.** A low that retraces 94% of its
+leg leaves support rising so steeply that it meets resistance almost
+immediately — the apex lands on L2, and there is no room left for a third high.
+The gate admits the ratio; geometry refuses it.
+
+So the 0.94 / 0.96 pair §11 asks for can only be tested on the predicate. The
+end-to-end tests now use ratios a triangle can actually take, and the synthetic
+builder gained two constraints learned the hard way: its tail must continue
+along the line the last pivot sits on (drifting flatter than support is a real
+breakdown, and rule 7 is right to reject it), and it must be short — a longer
+tail turns the dip after H3 into a confirmed low, which then strips H3 out on
+prominence, because a 1.6-point wobble off a 48-point rally is noise.

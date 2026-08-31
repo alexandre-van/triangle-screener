@@ -10,11 +10,15 @@ export interface PairRowProps {
   onSelect: (pattern: TrianglePattern) => void;
 }
 
-const STATUS_LABEL: Record<TrianglePattern["status"], string> = {
-  forming: "Forming",
-  h3_formed: "H3 in",
-  complete: "Complete",
-  breakout: "Breakout",
+/**
+ * "Waiting L3" is the point of the screener: H3 is confirmed and the third low
+ * is the thing to watch for. For a descending pattern the mirror makes the
+ * same state "waiting H3", so the label follows the direction.
+ */
+const statusLabel = (pattern: TrianglePattern): string => {
+  if (pattern.status === "breakout") return "Breakout";
+  if (pattern.status === "complete") return "Complete";
+  return pattern.direction === "ascending" ? "Waiting L3" : "Waiting H3";
 };
 
 export function PairRow({ pattern, selected, onSelect }: PairRowProps) {
@@ -45,8 +49,8 @@ export function PairRow({ pattern, selected, onSelect }: PairRowProps) {
           : pattern.direction.slice(0, 3)}
       </Badge>
 
-      <span className="text-2xs text-text-faint w-16 shrink-0">
-        {STATUS_LABEL[pattern.status]}
+      <span className="text-2xs text-text-faint w-20 shrink-0">
+        {statusLabel(pattern)}
       </span>
 
       <span
