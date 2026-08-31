@@ -444,3 +444,43 @@ a negative number is NaN — every descending candidate would have scored NaN an
 sorted unpredictably. Same family as rule 2's additive overshoot: an expression
 that reads perfectly for the ascending case silently breaks under the mirror.
 The §12 property test covers both.
+
+---
+
+## 2026-09-01 — A chart in a content-sized grid track can never shrink
+
+**Decision:** every grid track holding the chart is `minmax(0, …)` and every
+ancestor carries `min-w-0 overflow-hidden`.
+
+**Why:** `CLAUDE.md` already warned that `lightweight-charts` will not resize
+itself. The second half of that problem is worse and less obvious: the library
+sets an **explicit pixel width on its own DOM**. A grid track sized to content
+therefore grows to whatever width the chart was created at and never shrinks
+back. The container stops changing size, so the `ResizeObserver` never fires,
+so the chart never resizes — a deadlock that looks exactly like a missing
+observer.
+
+Measured on the Playwright resize test before the fix, after shrinking the
+viewport to 700px:
+
+```
+innerWidth: 700   main: 700px   gridTemplateColumns: "852px"   section: 852px
+```
+
+One column of 852px inside a 700px parent. The observer was wired correctly
+the whole time; there was simply nothing for it to observe.
+
+---
+
+## 2026-09-01 — Trendlines are drawn between their own touch points
+
+**Decision:** resistance spans the first to the last **high** pivot; support
+spans the first to the last **low**. Neither spans the pattern's overall first
+pivot.
+
+**Why:** for a descending pattern the first pivot chronologically is L1, and
+evaluating the resistance line that far back puts it far above the price —
+the first ETHUSDT render had resistance entering at the top-left corner of the
+chart, thousands of dollars above any candle. Geometrically the line is the
+same line; visually it is nonsense. A trendline is drawn between the points it
+actually touches, then projected.

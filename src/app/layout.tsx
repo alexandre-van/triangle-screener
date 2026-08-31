@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Instrument_Sans } from "next/font/google";
+import { Providers } from "./providers";
 import "./globals.css";
 
 const instrumentSans = Instrument_Sans({
@@ -32,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${instrumentSans.variable} ${ibmPlexMono.variable}`}>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
