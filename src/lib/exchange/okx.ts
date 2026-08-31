@@ -57,13 +57,14 @@ const tickersResponse = envelope(tickerRow);
 
 /** OKX signals business failures in the body with a 200 status. */
 const assertOk = (code: string, msg: string): void => {
-  if (code !== "0") {
-    throw new ExchangeError(
-      "upstream_error",
-      PROVIDER,
-      `okx returned code ${code}${msg ? `: ${msg}` : ""}`,
-    );
-  }
+  if (code === "0") return;
+  // 51001 is "Instrument ID does not exist" — a client asking for a pair that
+  // is not listed, not a fault on OKX's side. Verified against the live API.
+  throw new ExchangeError(
+    code === "51001" ? "unknown_symbol" : "upstream_error",
+    PROVIDER,
+    `okx returned code ${code}${msg ? `: ${msg}` : ""}`,
+  );
 };
 
 const toCandle = (row: readonly string[]): Candle => ({

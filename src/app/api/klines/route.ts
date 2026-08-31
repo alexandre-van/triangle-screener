@@ -45,17 +45,38 @@ const fail = (status: number, code: string, message: string) =>
     { status, headers: { "cache-control": "no-store" } },
   );
 
-/** Never leak the upstream URL or a stack trace to the client (§8.4). */
 const statusFor = (code: ExchangeError["code"]): number => {
   switch (code) {
+    case "unknown_symbol":
+      return 404;
     case "rate_limited":
       return 429;
-    case "blocked":
-      return 502;
     case "unreachable":
       return 504;
     default:
-      return 502;
+      return 502; // blocked, bad_response, upstream_error
+  }
+};
+
+/**
+ * What the client is told. §9's copy rule wants the error to say what failed
+ * — "Couldn't reach Bybit" — so the provider is named. The upstream's own
+ * error text is not passed through: it is written for an exchange integrator,
+ * not for someone looking at a chart, and §8.4 keeps upstream detail out of
+ * the response body.
+ */
+const messageFor = (e: ExchangeError, symbol: string): string => {
+  switch (e.code) {
+    case "unknown_symbol":
+      return `${symbol} is not listed on ${e.provider}.`;
+    case "rate_limited":
+      return `${e.provider} is rate limiting requests. Try again in a moment.`;
+    case "unreachable":
+      return `Couldn't reach ${e.provider}.`;
+    case "blocked":
+      return `${e.provider} refuses requests from this region.`;
+    default:
+      return `${e.provider} returned an unexpected response.`;
   }
 };
 
@@ -107,7 +128,7 @@ export async function GET(request: Request): Promise<Response> {
     );
   } catch (e) {
     if (e instanceof ExchangeError) {
-      return fail(statusFor(e.code), e.code, e.message);
+      return fail(statusFor(e.code), e.code, messageFor(e, symbol));
     }
     return fail(500, "internal_error", "Something went wrong loading candles.");
   }

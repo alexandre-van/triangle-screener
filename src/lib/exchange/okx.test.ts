@@ -161,10 +161,21 @@ describe("errors", () => {
 
   it("surfaces an OKX business error carried on a 200", async () => {
     stubFetch(() =>
+      json({ code: "50011", msg: "Rate limit reached", data: [] }),
+    );
+    await expect(okx.getCandles("BTCUSDT", "1h", 5)).rejects.toMatchObject({
+      code: "upstream_error",
+    });
+  });
+
+  it("separates an unlisted pair from a fault on OKX's side", async () => {
+    // 51001 means the caller asked for something that does not exist, which
+    // is a 404 downstream, not a bad gateway.
+    stubFetch(() =>
       json({ code: "51001", msg: "Instrument ID does not exist", data: [] }),
     );
     await expect(okx.getCandles("NOPEUSDT", "1h", 5)).rejects.toMatchObject({
-      code: "upstream_error",
+      code: "unknown_symbol",
     });
   });
 
