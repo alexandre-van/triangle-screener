@@ -6,6 +6,7 @@ import {
   type CandlestickData,
   type IChartApi,
   type ISeriesApi,
+  type Logical,
   type Time,
 } from "lightweight-charts";
 import { useEffect, useRef } from "react";
@@ -105,6 +106,38 @@ export default function PriceChart({ candles, pattern }: PriceChartProps) {
     series.setData(toSeriesData(candles));
     chartRef.current?.timeScale().fitContent();
   }, [candles]);
+
+  // Frame the pattern, not the whole history. A token that has fallen 97% over
+  // 999 bars draws its triangle as a few pixels in the corner — the one thing
+  // the page exists to show, invisible.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (chart === null) return;
+    if (pattern === undefined) {
+      chart.timeScale().fitContent();
+      return;
+    }
+    const indices = [
+      pattern.pivots.pole,
+      pattern.pivots.h1,
+      pattern.pivots.l1,
+      pattern.pivots.h2,
+      pattern.pivots.l2,
+      pattern.pivots.h3,
+      pattern.pivots.l3,
+    ]
+      .filter((p) => p !== undefined)
+      .map((p) => p.index);
+
+    const first = Math.min(...indices);
+    const last = candles.length - 1;
+    const context = Math.max(20, Math.round((last - first) * 0.35));
+
+    chart.timeScale().setVisibleLogicalRange({
+      from: Math.max(0, first - context) as Logical,
+      to: (last + Math.round(context * 0.6)) as Logical,
+    });
+  }, [pattern, candles.length]);
 
   useEffect(() => {
     const series = seriesRef.current;

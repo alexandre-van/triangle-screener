@@ -79,3 +79,18 @@ input[type="number"] {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* §9: one orchestrated moment — rows appear as the scan streams in, 120ms.
+ * Everything else is instant. The reduced-motion block above disables it. */
+@keyframes row-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-row {
+  animation: row-in 120ms ease-out;
+}

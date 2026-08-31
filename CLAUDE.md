@@ -5,15 +5,16 @@ already made. This file is the short list of rules that apply to every session.
 
 ## Where the project is
 
-Phases 0-4 are done and deployed to https://triangle-screener.vercel.app.
+Phases 0-5 are done and deployed to https://triangle-screener.vercel.app.
 The data layer (OKX + Bybit adapters, Zod, resampling) and the pattern engine
 (pivots, §6.2b selection, pole, trendlines, scoring) are built and tested;
 `/api/klines` returns candles plus any detected patterns. Both fixtures pass
 with all six pivots exact. The chart renders candles, both trendlines with
 dashed projection, labelled pivot markers and the pole band; pair and
 timeframe come from the URL.
-**Next task: Phase 5** — the screener panel: filters, streaming `/api/scan`,
-click-to-load wiring, responsive layout.
+**Next task: Phase 6** — security headers and the nonce CSP, rate limiting on
+`/api/scan`, and the remaining §13 items. Phase 8's live-data threshold tuning
+is worth starting alongside it.
 
 `.env.example` is not committed — this environment refuses to write `.env*`;
 create it from the table in `README.md`.
@@ -132,3 +133,13 @@ matching entry in `docs/decisions.md` before changing any of them.
 - Binance returns 451 from Vercel. It is a local-development fallback only; do
   not build anything that assumes it works in production.
 - Overrunning Bybit's rate limit earns a 10-minute IP ban. Keep concurrency low.
+- **Concurrency is not a rate.** Eight workers at 100ms each is 80 requests a
+  second; OKX allows 40 per 2s. Everything goes through the pacer in
+  `src/lib/exchange/rateLimit.ts`. Before it existed, a scan silently
+  rate-limited 135 of 200 pairs and still looked like it worked.
+- A scan fetches 300 candles per pair, the chart 1000. OKX caps a request at
+  300, so the chart's history costs four requests where the scan's costs one.
+- `pnpm e2e` builds first. Playwright's `webServer` serves whatever is in
+  `.next`, so without it you test the previous build — and a test can pass
+  against an attribute that does not exist yet.
+- E2E runs one worker: every spec scans the whole universe through one pacer.
