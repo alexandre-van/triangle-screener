@@ -53,7 +53,7 @@ Hosted free on Vercel.
 
 | Concern | Choice | Why |
 |---|---|---|
-| Framework | Next.js 15 (App Router), React 19, TypeScript strict | First-class Vercel target, route handlers give us a server-side proxy for exchange calls |
+| Framework | Next.js 16 (App Router), React 19, TypeScript strict | First-class Vercel target, route handlers give us a server-side proxy for exchange calls |
 | Package manager | pnpm | Fast, lockfile is deterministic, good CI cache story |
 | Styling | Tailwind CSS v4 with CSS custom properties for the palette | Palette lives in one place, see §9 |
 | Charting | `lightweight-charts` v5 (TradingView, Apache-2.0) | Exactly the look asked for, free, and v5 series primitives let us draw the trendlines |

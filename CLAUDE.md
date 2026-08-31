@@ -5,9 +5,17 @@ already made. This file is the short list of rules that apply to every session.
 
 ## Where the project is
 
-Nothing is built yet. There is no git repo, no `package.json`, no `src/`.
-**Next task: Phase 1** — scaffold Next.js + Tailwind + CI, `git init`, first
-commit. Phases 0 and 3's spec work is done and recorded in `docs/decisions.md`.
+Phase 1 is done: Next.js 16 + Tailwind v4 with the §9 palette, Vitest,
+Playwright, ESLint/Prettier, Husky, and the CI/CodeQL/gitleaks/Dependabot
+workflows. `src/app/page.tsx` is a placeholder shell.
+**Next task: Phase 2** — exchange adapters, Zod schemas, resampling,
+`/api/klines`. Phases 0 and 3's spec work is done and recorded in
+`docs/decisions.md`.
+
+Still outstanding from Phase 1, both of them things only you can do: push the
+repo to GitHub and turn on branch protection (§12), and connect it to Vercel.
+`.env.example` is not committed — this environment refuses to write `.env*`;
+create it from the table in `README.md`.
 
 `docs/fixtures/` holds the two calibration series, verified against §6.3.
 Rebuild them with `node scripts/build-fixtures.mjs` (no dependencies, needs

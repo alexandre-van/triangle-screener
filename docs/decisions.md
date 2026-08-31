@@ -188,3 +188,66 @@ Found while checking Hermès's mirrored candidate, where the bound has to reject
 a 41% overshoot. Expressed in units of the leg's own range the rule is
 scale-free and mirror-safe. The §12 mirror property test should catch any
 regression here.
+
+---
+
+## 2026-08-31 — Phase 1 scaffold: deviations from §2
+
+**Next.js 16, not 15.** `create-next-app@latest` now emits Next 16.3.3 with
+React 19.2. Nothing in the plan depends on a Next 15 API, so pinning backwards
+to get an older major would have bought nothing but a stale dependency. §2
+updated in the same commit.
+
+**pnpm is installed with `npm i -g pnpm`, not corepack.** Homebrew's Node
+formula ships without corepack, so `corepack enable` fails on this machine.
+`packageManager` in `package.json` still pins the version, and CI uses
+`pnpm/action-setup`, which reads it.
+
+**Node 22 in CI, Node 25 locally.** The plan asks for Node 22 and CI runs it.
+The local machine is on Homebrew's Node 25; `engines` is `>=22`. Worth
+remembering if something builds locally and not in CI.
+
+**Playwright runs on port 3117, and never reuses a running server.** The
+default `reuseExistingServer: !process.env.CI` attached the smoke test to an
+unrelated app already serving port 3000 and asserted against its markup. A
+fixed uncommon port plus `reuseExistingServer: false` means the E2E suite can
+only ever test this app's own production build.
+
+**Prettier does not format the prose docs.** `PLAN.md`, `CLAUDE.md` and
+`docs/` are in `.prettierignore`: prettier reflows their hand-wrapped
+paragraphs and turns a two-line change into a 274-line diff. Code, configs and
+`README.md` are formatted normally.
+
+**`.env.example` is not committed.** The environment this scaffold was built in
+refuses writes to `.env*` paths. The variables it would have held are
+documented as a table in `README.md` instead, which is the copy people actually
+read. Add the file by hand if you want it.
+
+**Purity of `src/lib/patterns/` is enforced by ESLint**, not only by
+convention: `no-restricted-globals` on `fetch`, `Date` and `console`, and
+`no-restricted-properties` on `Math.random` and `Date.now`, scoped to that
+directory. The 90% coverage gate lives in `vitest.config.ts` as a per-glob
+threshold, so `pnpm test:coverage` fails the build rather than reporting.
+
+---
+
+## 2026-08-31 — The client-bundle secret check greps for values, not words
+
+**Decision:** `scripts/check-bundle-secrets.sh` replaces the inline grep in CI.
+It matches known credential *formats* (private key blocks, `ghp_`/`gho_`,
+`github_pat_`, `sk-`, `AKIA`, `xox*`, `AIza`) and an explicit deny-list of
+server-only environment variable names, currently the two Upstash ones.
+
+**Why:** the first version grepped for the words `api_key`, `secret` and
+`password`, and failed the very first CI run on two framework chunks. Nothing
+had leaked — `password` appears as a property name in minified Next output, not
+least because `url.password` is part of the WHATWG URL API. A check that fails
+on every build is a check that gets ignored or deleted, which is worse than not
+having one.
+
+Names in the deny-list are the real signal for this project: none of them is
+`NEXT_PUBLIC_`, so any occurrence in client output means a server module was
+pulled into the browser graph. **Add to `DENY_ENV` whenever a server-only
+variable is introduced.** The script takes the directory as an argument so it
+can be pointed at a fixture, and both branches are covered by a planted-token
+check.

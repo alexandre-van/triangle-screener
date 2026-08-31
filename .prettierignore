@@ -1,0 +1,12 @@
+.next
+coverage
+node_modules
+playwright-report
+pnpm-lock.yaml
+test-results
+docs/fixtures
+
+# Prose docs are hand-wrapped; prettier's reflow makes their diffs unreadable.
+PLAN.md
+CLAUDE.md
+docs/
