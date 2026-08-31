@@ -251,3 +251,82 @@ pulled into the browser graph. **Add to `DENY_ENV` whenever a server-only
 variable is introduced.** The script takes the directory as an argument so it
 can be pointed at a fixture, and both branches are covered by a planted-token
 check.
+
+---
+
+## 2026-08-31 — §4 provider spike: OKX is primary, Bybit is geo-blocked
+
+**Decision:** **OKX spot is the primary provider.** Bybit moves behind
+`EXCHANGE_PROVIDER` alongside Binance, as a region-dependent option. This
+reverses §4's expected outcome, which was "Bybit primary, OKX fallback".
+
+**Evidence.** `scripts/spike-exchange.mjs`, run from a GitHub Actions runner in
+Virginia (40.76.239.96, Azure, us-east) on 2026-08-31, and separately from the
+laptop in Bali:
+
+| Provider | GitHub Actions (US) | Bali laptop |
+|---|---|---|
+| Bybit spot | **403** — "The Amazon CloudFront distribution is configured to block access from your country" | TLS intercepted at the ISP |
+| Bybit linear | **403** — same | same |
+| Binance | **451** | same |
+| OKX | **200** — 300 candles, 1385 tickers (395 USDT spot) | same |
+| Kraken | **200** — 721 candles, 1466 tickers (**47 USDT**) | same |
+
+**Why this overrides §4's "do not re-litigate".** That instruction protects the
+*reasoning* — that a provider working on a laptop tells you nothing about a
+provider working from a Vercel function. The reasoning stands; it just applies
+to Bybit as well. GitHub's hosted runners are US-only and Vercel's default
+function region is `iad1`, which is the same Virginia metro the spike ran from.
+Bybit fails there for exactly the reason Binance does. §0 says to update the
+plan when it turns out to be wrong, so §4 and §5.2 are updated in this PR.
+
+**Kraken is not a viable fallback** for this app: 47 USDT pairs against OKX's
+395. It is a USD/EUR venue. A 200-pair USDT universe cannot be built from it.
+
+**Bybit is still worth keeping** because it works from a Vercel deployment
+pinned to a region it serves — `sin1` or `hnd1`. That is a real escape hatch if
+OKX ever blocks. Note it would not rescue the Phase 7 GitHub Actions cron,
+whose runner region is not selectable.
+
+**OKX is the better fit on the merits, not just on reachability:**
+
+- It serves **all thirteen timeframes natively**, `3d` and `3M` included. Bybit
+  has neither and needs `resample.ts` for both.
+- Its candles carry an explicit **`confirm` flag** — `"0"` for the forming bar,
+  `"1"` for closed. The repaint hazard is stated in the data instead of
+  inferred from position.
+
+**Two OKX quirks the adapter absorbs:**
+
+1. **Bars of 6H and above are Hong Kong-anchored (UTC+8) unless the `utc`
+   suffix is used.** Every daily, weekly and monthly candle would otherwise sit
+   eight hours from where TradingView draws it. The adapter maps `1d` to
+   `1Dutc`, not `1D`. Timeframes below 6H have no variant and need none.
+2. **`limit` is capped at 300**, against §5.3's ask for 1000, so `getCandles`
+   pages backwards with `after` and dedupes the bar repeated across the seam.
+   Four requests per pair per timeframe where Bybit would need one.
+
+Like Bybit, OKX returns **newest-first strings with millisecond timestamps**,
+and reports business errors inside a 200 response.
+
+**The Bybit adapter is written but unverified against a live response.** No
+environment reachable from here can call it. Its tests are built from the
+documented shape in §5.2 and pin the quirks the adapter absorbs, not Bybit's
+behaviour. If it is ever switched on, verify it against a real payload first.
+
+---
+
+## 2026-08-31 — Bybit's retCode is checked before its payload is validated
+
+**Decision:** the Bybit envelope (`retCode`, `retMsg`, `result: unknown`) is
+validated separately from `result`, and `retCode` is checked first.
+
+**Why:** a Bybit error response carries `result: {}`. Validating the payload
+shape in one pass makes every business error — including **retCode 10006, the
+rate limiter** — surface as `bad_response`. The scanner's backoff keys on
+`rate_limited`, so it would never fire, and the penalty for overrunning Bybit
+is a 10-minute IP ban. Found by a test asserting the 10006 mapping.
+
+The same ordering applies to OKX, whose `data` is `[]` on error — harmless
+there, since an empty array still parses, but the adapter checks `code` first
+regardless.

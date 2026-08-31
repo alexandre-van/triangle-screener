@@ -132,6 +132,16 @@ about six components. Hand-write them.
 
 ## 4. Phase 0 — Data provider spike (do this first, it's half a day)
 
+> **ANSWERED 2026-08-31 — and the expected outcome below was wrong.** The spike
+> ran from a GitHub Actions runner in Virginia, the same metro as Vercel's
+> default `iad1` region. **Bybit returns 403** there — "The Amazon CloudFront
+> distribution is configured to block access from your country" — for both
+> `spot` and `linear`. Binance returns 451 as predicted. **OKX answers 200**
+> with 1385 spot tickers, 395 of them USDT, and is now the primary provider.
+> Kraken answers 200 but lists only 47 USDT pairs, so it is not a usable
+> fallback for this app. See `docs/decisions.md`. The rest of this section is
+> kept because its *reasoning* was right — it just applied to Bybit too.
+
 **Already established, do not re-litigate:** Binance returns HTTP 451
 ("Restricted access") to requests originating from Vercel. This is reported by
 Next.js developers hitting Binance's *public* endpoints — works locally, fails
@@ -216,7 +226,22 @@ Rules:
 - All exchange responses go through a Zod schema. A malformed response throws a
   typed `ExchangeError`, never leaks into the UI as `undefined`.
 
-### 5.2 Timeframes and the Bybit mapping
+### 5.2 Timeframes and the provider mappings
+
+**OKX (primary) needs no resampling.** It serves all thirteen timeframes
+natively, `3d` and `3M` included. Two things to get right instead:
+
+- Bars of **6H and above are anchored to Hong Kong time (UTC+8)** unless the
+  `utc` suffix is used — `1Dutc`, not `1D`. Without it every daily, weekly and
+  monthly candle sits eight hours from where TradingView draws it. Timeframes
+  below 6H have no variant and need none.
+- **`limit` is capped at 300**, so anything larger pages backwards with `after`.
+  The bar on the page seam is returned twice and must be deduped.
+
+OKX candles also carry a **`confirm` flag** — `"0"` forming, `"1"` closed —
+which states the repaint hazard rather than leaving it to be inferred.
+
+The Bybit mapping below still applies when `EXCHANGE_PROVIDER=bybit`.
 
 Bybit's `interval` parameter accepts exactly:
 `1, 3, 5, 15, 30, 60, 120, 240, 360, 720, D, W, M`. `limit` is capped at 1000,

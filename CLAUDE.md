@@ -5,17 +5,16 @@ already made. This file is the short list of rules that apply to every session.
 
 ## Where the project is
 
-Phase 1 is done: Next.js 16 + Tailwind v4 with the §9 palette, Vitest,
-Playwright, ESLint/Prettier, Husky, and the CI/CodeQL/gitleaks/Dependabot
-workflows. `src/app/page.tsx` is a placeholder shell.
-**Next task: Phase 2** — exchange adapters, Zod schemas, resampling,
-`/api/klines`. Phases 0 and 3's spec work is done and recorded in
-`docs/decisions.md`.
+Phases 0, 1 and 2 are done. Next.js 16 + Tailwind v4 with the §9 palette, the
+full CI pipeline, and the data layer: `ExchangeAdapter`, OKX and Bybit
+adapters, Zod schemas on every response, resampling, and `/api/klines`.
+`src/app/page.tsx` is still a placeholder shell.
+**Next task: Phase 3** — pivot detection, the triangle detector, scoring, and
+the two fixtures passing. Budget more time for it than §15 suggests.
 
-Still outstanding from Phase 1, both of them things only you can do: push the
-repo to GitHub and turn on branch protection (§12), and connect it to Vercel.
-`.env.example` is not committed — this environment refuses to write `.env*`;
-create it from the table in `README.md`.
+Still outstanding, and only you can do it: connect the repo to Vercel and set
+the function region. `.env.example` is not committed — this environment refuses
+to write `.env*`; create it from the table in `README.md`.
 
 `docs/fixtures/` holds the two calibration series, verified against §6.3.
 Rebuild them with `node scripts/build-fixtures.mjs` (no dependencies, needs
@@ -90,9 +89,21 @@ matching entry in `docs/decisions.md` before changing any of them.
   ascending detector. Do not write a second detector.
 - `#CA3C25` fails contrast for small text on the green background. It is for
   candles, lines, and large numerals only.
-- Bybit returns candles **newest-first**, as **strings**, with **millisecond**
-  timestamps. The adapter normalises all three. Nothing downstream re-checks.
-- Bybit has no `8h` and no `3d` interval. `3d` and `3M` are resampled.
+- **OKX is the provider, not Bybit.** Bybit 403s from any US IP, which is where
+  Vercel's default region and every GitHub runner live. See `docs/decisions.md`,
+  2026-08-31. Bybit's adapter exists but has never seen a live response.
+- OKX bars of **6h and above are Hong Kong-anchored** unless you ask for the
+  `utc` variant — `1Dutc`, not `1D`. Eight hours off is easy to miss on a chart
+  and fatal to a fixture.
+- OKX caps `limit` at **300**. Larger requests page backwards with `after`, and
+  the bar on the seam comes back twice.
+- Both OKX and Bybit return candles **newest-first**, as **strings**, with
+  **millisecond** timestamps. The adapters normalise all three. Nothing
+  downstream re-checks.
+- Both report business errors inside a **200**. Check `code` / `retCode` before
+  validating the payload — an error response has no payload to validate.
+- Bybit has no `8h` and no `3d` interval. `3d` and `3M` are resampled. OKX
+  serves every timeframe natively.
 - Binance returns 451 from Vercel. It is a local-development fallback only; do
   not build anything that assumes it works in production.
 - Overrunning Bybit's rate limit earns a 10-minute IP ban. Keep concurrency low.
