@@ -228,3 +228,26 @@ convention: `no-restricted-globals` on `fetch`, `Date` and `console`, and
 `no-restricted-properties` on `Math.random` and `Date.now`, scoped to that
 directory. The 90% coverage gate lives in `vitest.config.ts` as a per-glob
 threshold, so `pnpm test:coverage` fails the build rather than reporting.
+
+---
+
+## 2026-08-31 — The client-bundle secret check greps for values, not words
+
+**Decision:** `scripts/check-bundle-secrets.sh` replaces the inline grep in CI.
+It matches known credential *formats* (private key blocks, `ghp_`/`gho_`,
+`github_pat_`, `sk-`, `AKIA`, `xox*`, `AIza`) and an explicit deny-list of
+server-only environment variable names, currently the two Upstash ones.
+
+**Why:** the first version grepped for the words `api_key`, `secret` and
+`password`, and failed the very first CI run on two framework chunks. Nothing
+had leaked — `password` appears as a property name in minified Next output, not
+least because `url.password` is part of the WHATWG URL API. A check that fails
+on every build is a check that gets ignored or deleted, which is worse than not
+having one.
+
+Names in the deny-list are the real signal for this project: none of them is
+`NEXT_PUBLIC_`, so any occurrence in client output means a server module was
+pulled into the browser graph. **Add to `DENY_ENV` whenever a server-only
+variable is introduced.** The script takes the directory as an argument so it
+can be pointed at a fixture, and both branches are covered by a planted-token
+check.

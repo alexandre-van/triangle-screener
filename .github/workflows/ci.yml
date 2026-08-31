@@ -54,11 +54,7 @@ jobs:
 
       # PLAN.md §13.4 — nothing secret-shaped may reach the client bundle.
       - name: No secrets in the client bundle
-        run: |
-          if grep -rIEl '(api[_-]?key|secret|password|BEGIN [A-Z ]*PRIVATE KEY)' .next/static; then
-            echo "::error::secret-shaped string found in .next/static"
-            exit 1
-          fi
+        run: ./scripts/check-bundle-secrets.sh
 
       - name: Audit
         run: pnpm audit --audit-level=high
