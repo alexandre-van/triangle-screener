@@ -10,8 +10,9 @@ session.
 
 ## Status
 
-Phase 1 — scaffold. Next.js, Tailwind with the §9 palette, CI. The chart
-(Phase 4) and the screener panel (Phase 5) are placeholders.
+Phase 2. The scaffold and the data layer are in: exchange adapters, Zod
+schemas, resampling and `/api/klines`. The pattern engine (Phase 3), the chart
+(Phase 4) and the screener panel (Phase 5) are not built yet.
 
 ## Getting started
 
@@ -25,13 +26,14 @@ pnpm dev
 Nothing is required in `.env.local` for local development — every variable
 below has a working default. Create the file when you want to override one.
 
-| Variable                   | Default | What it does                                                                                                                                                     |
-| -------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `EXCHANGE_PROVIDER`        | `bybit` | `bybit` or `binance`. Bybit is the only one that works from Vercel; Binance returns 451 from their edge and is a local-development fallback only (`PLAN.md` §4). |
-| `SCAN_QUOTE_ASSETS`        | `USDT`  | Comma-separated quote assets to screen (§8.1).                                                                                                                   |
-| `SCAN_UNIVERSE_SIZE`       | `200`   | How many pairs the scanner keeps, ranked by 24h quote volume (§8.1).                                                                                             |
-| `UPSTASH_REDIS_REST_URL`   | —       | Phase 6/7 only — rate limiting and pre-computed scans.                                                                                                           |
-| `UPSTASH_REDIS_REST_TOKEN` | —       | As above.                                                                                                                                                        |
+| Variable                   | Default | What it does                                                                                                                                                                                                   |
+| -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EXCHANGE_PROVIDER`        | `okx`   | `okx` or `bybit`. OKX is the only candidate that answers from a US IP, which is where Vercel's default region and GitHub's runners live — Bybit 403s there and Binance 451s (`docs/decisions.md`, 2026-08-31). |
+| `EXCHANGE_MARKET`          | `spot`  | `spot` or `perp`. Switches OKX to `SWAP` and Bybit to `linear` together.                                                                                                                                       |
+| `SCAN_QUOTE_ASSETS`        | `USDT`  | Comma-separated quote assets to screen (§8.1).                                                                                                                                                                 |
+| `SCAN_UNIVERSE_SIZE`       | `200`   | How many pairs the scanner keeps, ranked by 24h quote volume (§8.1).                                                                                                                                           |
+| `UPSTASH_REDIS_REST_URL`   | —       | Phase 6/7 only — rate limiting and pre-computed scans.                                                                                                                                                         |
+| `UPSTASH_REDIS_REST_TOKEN` | —       | As above.                                                                                                                                                                                                      |
 
 | Command                            | What it does                                |
 | ---------------------------------- | ------------------------------------------- |
@@ -59,9 +61,12 @@ docs/fixtures/    committed OHLC used as calibration targets
 
 ## Data
 
-Bybit v5 is the exchange, server-side only — the browser never talks to an
-exchange. Binance returns HTTP 451 from Vercel and exists as a local-development
-fallback behind `EXCHANGE_PROVIDER`. See `PLAN.md` §4.
+OKX is the exchange, server-side only — the browser never talks to an exchange.
+Bybit returns 403 and Binance 451 from any US IP, which is where Vercel's
+default region and GitHub's hosted runners are; Bybit stays available behind
+`EXCHANGE_PROVIDER` for a deployment pinned to a region it serves. The spike
+that established this is `scripts/spike-exchange.mjs`; its results are in
+`docs/decisions.md`.
 
 `docs/fixtures/` holds two hand-verified weekly series — Hermès (ascending) and
 Boeing (descending) — used as regression targets for the detector. Rebuild them
