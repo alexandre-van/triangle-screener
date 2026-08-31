@@ -8,12 +8,15 @@ import {
 } from "@/lib/exchange/candles";
 import { getAdapter } from "@/lib/exchange/adapter";
 import { ExchangeError, isTimeframe, TIMEFRAMES } from "@/lib/exchange/types";
+import { configFor } from "@/lib/patterns/config";
+import { detectTriangles } from "@/lib/patterns/triangle";
 
 /**
  * GET /api/klines?symbol=BTCUSDT&tf=4h
  *
  * Exchange calls happen here and nowhere else — the browser never talks to an
- * exchange (PLAN.md §5.4). The detected pattern joins this response in Phase 3.
+ * exchange (PLAN.md §5.4). §8.3: the response carries the detected pattern
+ * alongside the candles, so clicking a screener row is a single round trip.
  */
 
 const query = z.object({
@@ -111,6 +114,14 @@ export async function GET(request: Request): Promise<Response> {
       );
     }
 
+    // Detection runs on closed candles only, whatever the caller asked for:
+    // a pattern that repaints is worse than no pattern.
+    const patterns = detectTriangles(dropForming(raw), {
+      symbol,
+      timeframe: tf,
+      config: configFor(tf),
+    });
+
     const ttl = cacheTtlSeconds(tf);
     return NextResponse.json(
       {
@@ -119,6 +130,7 @@ export async function GET(request: Request): Promise<Response> {
         provider: adapter.name,
         count: candles.length,
         candles,
+        patterns,
       },
       {
         headers: {

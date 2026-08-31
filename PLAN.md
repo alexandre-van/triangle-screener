@@ -355,7 +355,9 @@ Use a **fractal detector with an ATR prominence filter**:
    can never contain a confirmed pivot. This is what stops repainting.
 3. Filter out pivots whose prominence — the vertical distance to the adjacent
    opposite pivot — is less than `config.minPivotAtr × ATR(14)` at that bar
-   (default 1.5).
+   (default 1.5). Where there are two adjacent opposite pivots, use the
+   **smaller** drop, as topographic prominence does: taking the larger keeps
+   every tiny wobble that happens to sit next to a big move.
 4. Enforce alternation: if two highs occur with no low between them, keep the
    higher one and drop the other. Same for lows, keeping the lower.
 
@@ -392,7 +394,9 @@ stable, and it is the whole of the rule.
 
 **Definitions.** A *clean decline* runs `a → b` where `high[a]` is the maximum
 over `[a, b]` and `low[b]` is the minimum over `[a, b]`. Its size is measured in
-**log price**: `log(high[a]) − log(low[b])`. Enumerate every clean decline in
+**log price**: `|log(|high[a]|) − log(|low[b]|)|`. The magnitudes are taken
+first because §6.1 mirrors by negating prices, and `log` of a negative number
+is NaN — the same hazard as rule 2's additive overshoot. Enumerate every clean decline in
 the window, sort by size, and greedily keep the largest that does not overlap
 in time with one already kept, until three are held.
 
