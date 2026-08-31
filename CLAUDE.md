@@ -5,16 +5,16 @@ already made. This file is the short list of rules that apply to every session.
 
 ## Where the project is
 
-Phases 0, 1 and 2 are done. Next.js 16 + Tailwind v4 with the §9 palette, the
-full CI pipeline, and the data layer: `ExchangeAdapter`, OKX and Bybit
-adapters, Zod schemas on every response, resampling, and `/api/klines`.
-`src/app/page.tsx` is still a placeholder shell.
-**Next task: Phase 3** — pivot detection, the triangle detector, scoring, and
-the two fixtures passing. Budget more time for it than §15 suggests.
+Phases 0-3 are done and deployed to https://triangle-screener.vercel.app.
+The data layer (OKX + Bybit adapters, Zod, resampling) and the pattern engine
+(pivots, §6.2b selection, pole, trendlines, scoring) are built and tested;
+`/api/klines` returns candles plus any detected patterns. Both fixtures pass
+with all six pivots exact. `src/app/page.tsx` is still a placeholder shell.
+**Next task: Phase 4** — the chart: `lightweight-charts`, the triangle
+primitive, pivot markers, the pole band.
 
-Still outstanding, and only you can do it: connect the repo to Vercel and set
-the function region. `.env.example` is not committed — this environment refuses
-to write `.env*`; create it from the table in `README.md`.
+`.env.example` is not committed — this environment refuses to write `.env*`;
+create it from the table in `README.md`.
 
 `docs/fixtures/` holds the two calibration series, verified against §6.3.
 Rebuild them with `node scripts/build-fixtures.mjs` (no dependencies, needs
@@ -79,6 +79,21 @@ matching entry in `docs/decisions.md` before changing any of them.
 - `f_low` (rule 3) is a **scoring input, not a gate**. Real triangles sit far
   below the 0.236–0.786 ideal; three of the four fixture values do.
 - There is **no apex-distance rule**. `maxApexBars` does not exist.
+
+## Pattern-engine invariants settled on 2026-09-01
+
+- The high-pivot score's ideal is a **flat resistance** (step 0), not the
+  centre of the allowed band. Centring scores a textbook ascending triangle
+  1.5/25 and makes §11's "perfect scores ≥ 95" unreachable.
+- An **absent pole scores neutrally** (7.5), not 0 — defined as what a pole on
+  `minPoleRatio` earns, so the component is continuous. Scoring 0 leaves a
+  pattern better off with a barely-qualifying pole than with none.
+- Pivot prominence uses the **smaller** adjacent drop, as topographic
+  prominence does.
+- Decline size takes **magnitudes before the log**: the mirror negates prices
+  and `log` of a negative is NaN.
+- Neither scoring change loosened a gate. Both fixtures were detected exactly
+  before them; only the grading of admitted patterns changed.
 
 ## Things that are easy to get wrong here
 

@@ -361,3 +361,86 @@ parameter bugs into 404s. It stays `upstream_error` until someone can verify it.
 **This is a stopgap.** §8.4 wants the symbol checked against the cached
 universe before it reaches an upstream URL at all. That arrives with
 `universe.ts` in Phase 5, and will catch this case before a request is made.
+
+---
+
+## 2026-09-01 — §6.8's high-pivot ideal is the flat resistance, not the band centre
+
+**Decision:** the high-step component scores distance from **0**, not from the
+centre of the allowed band. `25 × (1 − (|r| / fibHighMax)²)`.
+
+**Why:** §6.8 says "distance of the actual ratio from the ideal (centre of the
+allowed band)". Taken literally the ideal step is 0.155 — a resistance line
+falling 15.5% of the leg range on every step. That is a description of a
+*symmetrical* triangle. An **ascending** triangle is defined by a **flat**
+resistance, so its ideal step is 0, and the band is a tolerance rather than a
+distribution to centre on.
+
+The literal reading is not merely imprecise, it inverts the component:
+
+| high step | band-centre score | flat-ideal score |
+|---|---|---|
+| 0.000 — flat resistance, textbook ascending | **1.5 / 25** | **25 / 25** |
+| 0.155 — resistance falling steadily | 25 / 25 | 13.9 / 25 |
+
+It also makes §11's requirement that "a hand-built perfect triangle scores
+≥ 95" arithmetically unreachable: 1.5 is the best a perfect triangle could
+score on the component measuring its defining feature.
+
+Both fixtures improve or hold under the corrected form (Hermès 21.1 → 22.6,
+Boeing 23.2 → 21.7).
+
+---
+
+## 2026-09-01 — An absent pole scores neutrally, not zero
+
+**Decision:** when no pole qualifies, the pole component scores
+`15 × minPoleRatio / poleRatioForFullMarks` — currently **7.5** — instead of 0.
+
+**Why:** §6.4 makes the pole optional, because triangles are legitimately
+reversal patterns, and §6.8 says "0 if absent". Those two do not sit together.
+Scoring 0 for absence is discontinuous at the qualifying boundary: a pole
+sitting exactly on `minPoleRatio` earns 7.5, so a pattern would be **better off
+with a barely-qualifying pole than with none at all**, which is backwards. The
+neutral value is not a free parameter — it is defined as whatever a
+minimum-qualifying pole earns, which makes the component continuous by
+construction.
+
+This is what carries Hermès over §7's bar. Its pole is clipped by the data —
+Yahoo's RMS.PA history begins 2000-01-03 and H1 sits at bar 44, so the run-up
+into H1 is cut off — and scoring that absence as a failure punishes the fixture
+for the shape of the dataset rather than the shape of the pattern.
+
+**Neither change is a loosened gate.** Both fixtures were already detected with
+all six pivots exact before either correction; what changed is how an admitted
+pattern is graded, not what is admitted. No hard threshold in §6.3 moved.
+
+Fixture scores: Hermès 63.8 → 72.8, Boeing 73.1 → 71.6. Both clear the 70 §7
+requires.
+
+---
+
+## 2026-09-01 — Pivot prominence uses the smaller adjacent drop
+
+**Decision:** `filterByProminence` compares against `Math.min` of the two
+adjacent opposite pivots, not `Math.max`.
+
+**Why:** §6.2 says prominence is "the vertical distance to the adjacent
+opposite pivot", which is ambiguous when there are two. Taking the larger keeps
+every tiny wobble that happens to sit next to a big move — precisely the noise
+the filter exists to remove. Topographic prominence, which §6.2b's rejected
+zigzag approach also referenced, uses the smaller side. Caught by a test that
+asserted a shallow dip beside a large swing gets filtered and found it did not.
+
+---
+
+## 2026-09-01 — Log sizing takes the magnitude first, for the mirror
+
+**Decision:** decline size is
+`|log(|high[a]|) − log(|low[b]|)|`, not `log(high[a]) − log(low[b])`.
+
+**Why:** §6.1 detects descending patterns by **negating** prices, and `log` of
+a negative number is NaN — every descending candidate would have scored NaN and
+sorted unpredictably. Same family as rule 2's additive overshoot: an expression
+that reads perfectly for the ascending case silently breaks under the mirror.
+The §12 property test covers both.

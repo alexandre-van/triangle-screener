@@ -12,7 +12,12 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text-summary", "json-summary", "lcov"],
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/app/**", "src/**/*.test.{ts,tsx}", "src/types/**"],
+      exclude: [
+        "src/app/**",
+        "src/**/*.test.{ts,tsx}",
+        "src/**/__fixtures__/**",
+        "src/types/**",
+      ],
       // §11: the pattern engine is where bugs are invisible and expensive.
       thresholds: {
         lines: 60,

@@ -205,3 +205,20 @@ describe("unknown symbols", () => {
     expect((await get("symbol=BTCUSDT&tf=1d")).status).toBe(502);
   });
 });
+
+describe("pattern detection", () => {
+  it("carries any detected patterns alongside the candles", async () => {
+    stubOnce(okxJson(candles(200)));
+    const body = await (await get("symbol=BTCUSDT&tf=4h")).json();
+    // A flat synthetic series holds no triangle, but the key must be present
+    // so callers never have to distinguish "none" from "not computed".
+    expect(Array.isArray(body.patterns)).toBe(true);
+  });
+
+  it("detects on closed candles even when the caller keeps the forming one", async () => {
+    stubOnce(okxJson(candles(200)));
+    const body = await (await get("symbol=BTCUSDT&tf=4h&forming=1")).json();
+    expect(body.count).toBe(200);
+    expect(Array.isArray(body.patterns)).toBe(true);
+  });
+});

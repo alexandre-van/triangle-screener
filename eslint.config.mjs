@@ -25,7 +25,10 @@ const eslintConfig = defineConfig([
     // PLAN.md §6: everything in the pattern engine is pure. It takes candles
     // in and returns patterns out.
     files: ["src/lib/patterns/**/*.ts"],
-    ignores: ["src/lib/patterns/**/*.test.ts"],
+    ignores: [
+      "src/lib/patterns/**/*.test.ts",
+      "src/lib/patterns/**/__fixtures__/**",
+    ],
     rules: {
       "no-restricted-globals": [
         "error",

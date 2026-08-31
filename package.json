@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "COVERAGE=1 vitest run --coverage",
     "e2e": "playwright test",
     "prepare": "husky"
   },

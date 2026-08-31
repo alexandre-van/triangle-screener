@@ -10,9 +10,10 @@ session.
 
 ## Status
 
-Phase 2. The scaffold and the data layer are in: exchange adapters, Zod
-schemas, resampling and `/api/klines`. The pattern engine (Phase 3), the chart
-(Phase 4) and the screener panel (Phase 5) are not built yet.
+Phase 3, deployed at https://triangle-screener.vercel.app. The data layer and
+the pattern engine are in: `/api/klines` returns candles plus any triangles
+detected on them. Both calibration fixtures pass with all six pivots exact.
+The chart (Phase 4) and the screener panel (Phase 5) are not built yet.
 
 ## Getting started
 
