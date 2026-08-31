@@ -21,6 +21,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+          # The spike has no dependencies. Left on, setup-node sees
+          # pnpm-lock.yaml and dies looking for a pnpm that is not installed.
+          package-manager-cache: false
 
       - name: Where is this runner
         run: curl -s https://ipinfo.io/json | head -c 400 || true
