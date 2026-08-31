@@ -48,3 +48,6 @@ next-env.d.ts
 
 # env: the example is committed, real values never are
 !.env.example
+
+# spike output — regenerated, never committed as-is
+/spike-out/

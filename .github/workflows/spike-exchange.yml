@@ -1,0 +1,38 @@
+name: Exchange spike
+
+# PLAN.md §4 — which exchanges answer from a GitHub runner, and what do they
+# actually return? Triggered on push to spike/** because workflow_dispatch is
+# only offered for workflows already on the default branch.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["spike/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Where is this runner
+        run: curl -s https://ipinfo.io/json | head -c 400 || true
+
+      - name: Probe providers
+        env:
+          SPIKE_ENV: github-actions
+        run: node scripts/spike-exchange.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-out
+          path: spike-out/
+          retention-days: 7
