@@ -10,10 +10,10 @@ session.
 
 ## Status
 
-Phase 3, deployed at https://triangle-screener.vercel.app. The data layer and
-the pattern engine are in: `/api/klines` returns candles plus any triangles
-detected on them. Both calibration fixtures pass with all six pivots exact.
-The chart (Phase 4) and the screener panel (Phase 5) are not built yet.
+Phase 4, deployed at https://triangle-screener.vercel.app. The data layer, the
+pattern engine and the chart are in: a pair and timeframe from the URL render
+as candles with the detected triangle drawn on them. Both calibration fixtures
+pass with all six pivots exact. The screener panel (Phase 5) is not built yet.
 
 ## Getting started
 

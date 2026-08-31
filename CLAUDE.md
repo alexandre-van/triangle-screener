@@ -5,13 +5,15 @@ already made. This file is the short list of rules that apply to every session.
 
 ## Where the project is
 
-Phases 0-3 are done and deployed to https://triangle-screener.vercel.app.
+Phases 0-4 are done and deployed to https://triangle-screener.vercel.app.
 The data layer (OKX + Bybit adapters, Zod, resampling) and the pattern engine
 (pivots, §6.2b selection, pole, trendlines, scoring) are built and tested;
 `/api/klines` returns candles plus any detected patterns. Both fixtures pass
-with all six pivots exact. `src/app/page.tsx` is still a placeholder shell.
-**Next task: Phase 4** — the chart: `lightweight-charts`, the triangle
-primitive, pivot markers, the pole band.
+with all six pivots exact. The chart renders candles, both trendlines with
+dashed projection, labelled pivot markers and the pole band; pair and
+timeframe come from the URL.
+**Next task: Phase 5** — the screener panel: filters, streaming `/api/scan`,
+click-to-load wiring, responsive layout.
 
 `.env.example` is not committed — this environment refuses to write `.env*`;
 create it from the table in `README.md`.
@@ -99,6 +101,14 @@ matching entry in `docs/decisions.md` before changing any of them.
 
 - `lightweight-charts` will not resize itself. Wire a `ResizeObserver` and call
   `applyOptions({ width, height })`.
+- It also sets an **explicit pixel width on its own DOM**, so a grid or flex
+  track that sizes to content can never shrink below the width the chart was
+  created at. The container then never changes size, the `ResizeObserver`
+  never fires, and the chart looks like it is ignoring the viewport. Every
+  track holding a chart needs `minmax(0, ...)` and every ancestor `min-w-0`.
+- Draw each trendline between **its own** touch points. Spanning it from the
+  pattern's first pivot sends resistance off the top of the chart on any
+  descending pattern, where the first pivot is a low.
 - The last candle from every exchange is incomplete. Slice it off.
 - Descending triangles are detected by mirroring the series and running the
   ascending detector. Do not write a second detector.
