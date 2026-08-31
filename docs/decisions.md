@@ -484,3 +484,108 @@ the first ETHUSDT render had resistance entering at the top-left corner of the
 chart, thousands of dollars above any candle. Geometrically the line is the
 same line; visually it is nonsense. A trendline is drawn between the points it
 actually touches, then projected.
+
+---
+
+## 2026-09-01 — Provider calls are paced, not just concurrency-limited
+
+**Decision:** every provider request goes through a per-provider pacer
+(`src/lib/exchange/rateLimit.ts`) set to 15 requests/second, shared across the
+whole process. `rate_limited` and `unreachable` are retried up to three times
+with exponential backoff plus jitter; nothing else is retried.
+
+**Why:** a concurrency cap does not control a *rate*. Eight workers each
+finishing in 100ms is eighty requests a second, and OKX allows forty per two
+seconds. The first live 200-pair scan came back:
+
+```
+hits 20  misses 45  errors {"rate_limited": 135}
+```
+
+**Two-thirds of the universe failed and the scan still looked like it worked**
+— the hit count was plausible, it finished in 9.6 seconds, and nothing surfaced
+the errors. It also starved the chart: `/api/klines` was competing for the same
+budget, so the page showed "Loading BTCUSDT…" forever and three E2E tests timed
+out. That is what led to the diagnosis.
+
+After pacing: `hits 34  misses 166  errors {}`, 14.2 seconds, first row at
+726ms. §8.2 budgets 25–60 seconds, so there is room to spare.
+
+`CLAUDE.md` warned that overrunning Bybit earns a 10-minute IP ban. The same
+warning applies to OKX and the fix belongs in the HTTP layer, where every
+caller gets it, rather than in the scanner.
+
+---
+
+## 2026-09-01 — A scan fetches 300 candles; the chart fetches 1000
+
+**Decision:** `scanCandleLimit(tf) = min(candleLimit(tf), 300)`.
+
+**Why:** OKX caps a request at 300 candles, so §5.3's 1000 costs **four**
+upstream requests per pair — 800 for a 200-pair scan. One page per pair cuts
+that to 200 and keeps a full scan inside §8.2's budget.
+
+The screener looks for patterns forming *now*, at the right-hand edge. The
+largest window in the sweep is 900 bars, but a pattern needing 900 bars of
+context is not one that is about to break out. Clicking a row loads the chart,
+which fetches the full history and re-detects — so nothing is permanently
+hidden, it just is not scanned for.
+
+---
+
+## 2026-09-01 — The screener was on the left, at twice the width
+
+**Decision:** the mobile tab bar sits outside the grid, in a flex column
+wrapper.
+
+**Why:** as a grid child it consumed a cell, and the aside's `xl:row-start-1`
+made it an *explicitly placed* item. CSS grid places those before auto-placed
+ones, so the aside took row 1 column 1 and the chart was pushed to column 2 —
+the screener rendered at 2/3 width on the left and the chart at 1/3 on the
+right, the exact inverse of §1. Caught by looking at a screenshot; every test
+still passed, because nothing asserted which side anything was on.
+
+---
+
+## 2026-09-01 — The chart frames the pattern, not the whole history
+
+**Decision:** when a pattern is present the visible range is set around it,
+with about 35% of the pattern's own span as context on the left. `fitContent`
+only when there is nothing to show.
+
+**Why:** PNUTUSDT fell from 2.00 to 0.05 over the 999 candles the chart loads.
+Fitted to all of them, the triangle was a few pixels in the bottom-right
+corner — the one thing the page exists to show, invisible. Framing it makes the
+same pattern read clearly.
+
+---
+
+## 2026-09-01 — Stablecoins are matched by naming convention
+
+**Decision:** `looksLikeStable` matches `^(USD|EUR)[A-Z0-9]?$` and `(USD|EUR)$`
+alongside the explicit list.
+
+**Why:** USDG shipped, ranked into the top 200 by volume, and scored 66.2 on
+the first live scan — a triangle drawn on the wobble of a peg. A fixed list
+always lags the next launch; the naming convention does not. Exactly one suffix
+character, because two swallows ordinary tickers like EURO3.
+
+---
+
+## 2026-09-01 — E2E builds first and runs one worker
+
+**Decision:** `pnpm e2e` runs `next build` first, and Playwright uses a single
+worker with `fullyParallel: false`.
+
+**Why:** two silent failure modes.
+
+`playwright.config.ts` starts `pnpm start`, which serves whatever is already in
+`.next`. Editing a component and running `pnpm e2e` therefore tested the
+*previous* build. A test asserting `data-direction="descending"` count is zero
+passed against a build where the attribute did not exist at all — a vacuous
+pass, on stale code. The direction test now counts rows carrying the attribute
+before asserting anything about its value.
+
+And every spec triggers a scan of the whole universe, all queued behind one
+server-side pacer. Three parallel workers made each spec three times slower and
+timed all of them out.

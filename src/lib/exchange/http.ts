@@ -1,7 +1,28 @@
 import { ZodError, type ZodType } from "zod";
+import { backoffMs, createPacer, type Pacer } from "./rateLimit";
 import { ExchangeError } from "./types";
 
 const DEFAULT_TIMEOUT_MS = 12_000;
+/** §5.4: never retry more than three times. */
+const MAX_ATTEMPTS = 3;
+
+/**
+ * One pacer per provider, shared across every caller in the process — a scan
+ * and a chart request must not each get their own budget.
+ */
+const pacers = new Map<string, Pacer>();
+
+/** Comfortably inside OKX's 40 requests per 2 seconds. */
+const RATES: Record<string, number> = { okx: 15, bybit: 15 };
+
+const pacerFor = (provider: string): Pacer => {
+  let pacer = pacers.get(provider);
+  if (pacer === undefined) {
+    pacer = createPacer(RATES[provider] ?? 10);
+    pacers.set(provider, pacer);
+  }
+  return pacer;
+};
 
 /**
  * The only way this layer talks to the outside world. Every response is parsed
@@ -9,7 +30,37 @@ const DEFAULT_TIMEOUT_MS = 12_000;
  * comes back as a typed ExchangeError rather than an exception from three
  * libraries down.
  */
+/**
+ * Paced, and retried on the failures worth retrying. A geo-block or a
+ * malformed payload will not fix itself, so neither is retried.
+ */
 export const fetchJson = async <T>(
+  provider: string,
+  url: string,
+  schema: ZodType<T>,
+  init?: { timeoutMs?: number; signal?: AbortSignal },
+): Promise<T> => {
+  let last: ExchangeError | undefined;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    try {
+      return await pacerFor(provider)(() =>
+        fetchOnce(provider, url, schema, init),
+      );
+    } catch (e) {
+      if (!(e instanceof ExchangeError)) throw e;
+      last = e;
+      if (e.code !== "rate_limited" && e.code !== "unreachable") throw e;
+      if (attempt === MAX_ATTEMPTS - 1) break;
+      await new Promise((resolve) => setTimeout(resolve, backoffMs(attempt)));
+    }
+  }
+  throw (
+    last ??
+    new ExchangeError("unreachable", provider, `could not reach ${provider}`)
+  );
+};
+
+const fetchOnce = async <T>(
   provider: string,
   url: string,
   schema: ZodType<T>,

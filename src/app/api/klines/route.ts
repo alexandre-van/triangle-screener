@@ -8,6 +8,7 @@ import {
 } from "@/lib/exchange/candles";
 import { getAdapter } from "@/lib/exchange/adapter";
 import { ExchangeError, isTimeframe, TIMEFRAMES } from "@/lib/exchange/types";
+import { isKnownSymbol } from "@/lib/scan/universe";
 import { configFor } from "@/lib/patterns/config";
 import { detectTriangles } from "@/lib/patterns/triangle";
 
@@ -99,6 +100,20 @@ export async function GET(request: Request): Promise<Response> {
 
   const { symbol, tf, forming } = parsed.data;
   const adapter = getAdapter();
+
+  // §8.4: check the symbol against the cached pair list before it reaches an
+  // upstream URL. Deliberately soft — `undefined` means the list could not be
+  // loaded, and the request falls through rather than taking the chart down
+  // over a hiccup in an endpoint it does not otherwise need. The regex above
+  // is what actually prevents SSRF; this saves a pointless round trip and
+  // gives a better error.
+  if ((await isKnownSymbol(adapter, symbol)) === false) {
+    return fail(
+      404,
+      "unknown_symbol",
+      `${symbol} is not listed on ${adapter.name}.`,
+    );
+  }
 
   try {
     const raw = await adapter.getCandles(symbol, tf, candleLimit(tf));

@@ -10,10 +10,10 @@ session.
 
 ## Status
 
-Phase 4, deployed at https://triangle-screener.vercel.app. The data layer, the
-pattern engine and the chart are in: a pair and timeframe from the URL render
-as candles with the detected triangle drawn on them. Both calibration fixtures
-pass with all six pivots exact. The screener panel (Phase 5) is not built yet.
+Phase 5, deployed at https://triangle-screener.vercel.app. The app works end to
+end: the screener streams a scan of the top 200 USDT pairs, and clicking a row
+draws that pair's triangle on the chart. Both calibration fixtures pass with
+all six pivots exact. Security headers and rate limiting (Phase 6) are next.
 
 ## Getting started
 
