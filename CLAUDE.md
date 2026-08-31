@@ -82,6 +82,12 @@ matching entry in `docs/decisions.md` before changing any of them.
 - `f_low` (rule 3) is a **scoring input, not a gate**. Real triangles sit far
   below the 0.236–0.786 ideal; three of the four fixture values do.
 - There is **no apex-distance rule**. `maxApexBars` does not exist.
+- **Nothing is reported before H3 is confirmed.** There is no `forming` state.
+  Four pivots is a forecast, not a pattern. Mirrored, this means a descending
+  triangle is reported once its third *low* confirms.
+- An `f_low` near the 0.95 ceiling **cannot** form a triangle with an H3:
+  support rises so steeply it meets resistance at L2. Rule boundaries are
+  tested on the predicates in `rules.ts`, not through a synthetic series.
 
 ## Pattern-engine invariants settled on 2026-09-01
 

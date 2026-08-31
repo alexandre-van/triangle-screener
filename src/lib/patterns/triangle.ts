@@ -3,12 +3,22 @@ import { atr } from "./atr";
 import { cleanDeclines, pivotIndices, selectDeclines } from "./declines";
 import { mirrorSeries } from "./mirror";
 import { findPivots } from "./pivots";
+import { fLow, fLowOk, highStep, highStepOk } from "./rules";
 import { findPole, type Pole } from "./pole";
 import { score, type ScoreBreakdown } from "./score";
 import { apexBarIndex, fitLine, valueAt, type LineSpec } from "./trendline";
 import type { PatternConfig } from "./config";
 
-export type TriangleStatus = "forming" | "h3_formed" | "complete" | "breakout";
+/**
+ * A pattern is not reported until H3 is confirmed. Four pivots — H1, L1, H2,
+ * L2 — is a shape that has not yet shown it will hold its resistance a third
+ * time, and reporting it hands the reader a guess rather than a pattern. From
+ * `h3_formed` the thing still to come is L3, which is the reader's to watch.
+ *
+ * Under the §6.1 mirror this inverts for free: a descending pattern is
+ * reported once its third *low* is confirmed, waiting on H3.
+ */
+export type TriangleStatus = "h3_formed" | "complete" | "breakout";
 export type Direction = "ascending" | "descending";
 export type Subtype = "classic" | "symmetrical";
 
@@ -128,8 +138,8 @@ const bestCandidate = (
   for (const width of widths) {
     const offset = series.length - width;
     const window = series.slice(offset);
-    for (const legs of [3, 2] as const) {
-      const c = candidateFor(window, offset, legs, config);
+    for (const stage of ["complete", "h3"] as const) {
+      const c = candidateFor(window, offset, stage, config);
       if (
         c !== undefined &&
         (best === undefined || c.breakdown.total > best.breakdown.total)
@@ -137,23 +147,38 @@ const bestCandidate = (
         best = c;
       }
     }
-    // A three-leg pattern found in this window makes the two-leg reading of
-    // the same window redundant.
   }
   return best;
 };
 
+/**
+ * `complete` is three whole declines — all six pivots. `h3` is two declines
+ * plus the confirmed high that opens the third, which is the earliest a
+ * pattern is reported.
+ */
+type Stage = "complete" | "h3";
+
 const candidateFor = (
   window: readonly Candle[],
   offset: number,
-  legs: 2 | 3,
+  stage: Stage,
   config: PatternConfig,
 ): Candidate | undefined => {
   const pivots = findPivots(window, config);
+  const legs = stage === "complete" ? 3 : 2;
   const selected = selectDeclines(cleanDeclines(window, pivots), legs);
   if (selected.length < legs) return undefined;
 
   const idx = pivotIndices(selected);
+
+  if (stage === "h3") {
+    // The third high is the peak of the rally off L2. Take the highest
+    // confirmed swing high after it: a later, higher one does not make a
+    // better H3, it makes the pattern fail rule 2 below, which is correct.
+    const h3 = highestHighAfter(window, pivots, idx[3]);
+    if (h3 === undefined) return undefined;
+    idx.push(h3);
+  }
   const price = (i: number, kind: "high" | "low") =>
     kind === "high" ? window[i].high : window[i].low;
 
@@ -170,22 +195,19 @@ const candidateFor = (
   // inverts under the mirror, where prices are negative.
   const highSteps: number[] = [];
   for (let n = 0; n + 1 < h.length; n++) {
-    const range = h[n] - l[n];
-    if (range <= 0) return undefined;
-    const upper = h[n] + config.overshoot * range;
-    const lower = h[n] - config.fibHighMax * range;
-    if (h[n + 1] > upper || h[n + 1] < lower) return undefined;
-    highSteps.push((h[n] - h[n + 1]) / range);
+    if (h[n] - l[n] <= 0) return undefined;
+    const step = highStep(h[n], l[n], h[n + 1]);
+    if (!highStepOk(step, config)) return undefined;
+    highSteps.push(step);
   }
 
   // --- Rule 3: lows retrace the up-leg -------------------------------
   // A scoring input with hard bounds, not a Fibonacci gate.
   const fLows: number[] = [];
   for (let n = 1; n < l.length; n++) {
-    const leg = h[n] - l[n - 1];
-    if (leg <= 0) return undefined;
-    const f = (l[n] - l[n - 1]) / leg;
-    if (f <= config.fibLowFloor || f >= config.fibLowCeil) return undefined;
+    if (h[n] - l[n - 1] <= 0) return undefined;
+    const f = fLow(l[n - 1], h[n], l[n]);
+    if (!fLowOk(f, config)) return undefined;
     fLows.push(f);
   }
 
@@ -205,8 +227,10 @@ const candidateFor = (
   if (support.slope <= 0) return undefined;
 
   // --- Rule 7: not already broken ------------------------------------
-  const lastPivot = idx[idx.length - 1];
-  for (let i = lastPivot + 1; i < window.length; i++) {
+  // From the last *low* onward: with five pivots the last pivot is H3, and the
+  // stretch between L2 and H3 still has to have held support.
+  const lastLow = idx.length === 6 ? idx[5] : idx[3];
+  for (let i = lastLow + 1; i < window.length; i++) {
     const line = valueAt(support, i);
     if (window[i].low < line - Math.abs(line) * config.breakdownTol)
       return undefined;
@@ -221,8 +245,8 @@ const candidateFor = (
     t2: t(0, 1),
     t3: t(1, 2),
     t4: t(2, 3),
-    t5: legs === 3 ? t(3, 4) : undefined,
-    t6: legs === 3 ? t(4, 5) : undefined,
+    t5: idx.length >= 5 ? t(3, 4) : undefined,
+    t6: idx.length === 6 ? t(4, 5) : undefined,
   };
   const rules: Array<[number | undefined, number | undefined]> = [
     [timings.t1, timings.t2],
@@ -254,8 +278,8 @@ const candidateFor = (
         apex === undefined || apex <= idx[0]
           ? undefined
           : (window.length - 1 - idx[0]) / (apex - idx[0]),
-      hasH3: legs === 3,
-      hasL3: legs === 3,
+      hasH3: idx.length >= 5,
+      hasL3: idx.length === 6,
     },
     config,
   );
@@ -264,9 +288,9 @@ const candidateFor = (
   const status: TriangleStatus =
     window[last].close > valueAt(resistance, last)
       ? "breakout"
-      : legs === 3
+      : idx.length === 6
         ? "complete"
-        : "forming";
+        : "h3_formed";
 
   return {
     indices: idx.map((i) => i + offset),
@@ -332,7 +356,7 @@ const build = (
   const support = flip ? unflip(c.resistance) : c.support;
 
   const last = candles.length - 1;
-  const allTimingsPass = c.breakdown.timing === 15 && c.status !== "forming";
+  const allTimingsPass = c.breakdown.timing === 15;
 
   return {
     symbol: options.symbol,
@@ -369,4 +393,23 @@ const build = (
     timings: c.timings,
     detectedAtBarTime: candles[last].time,
   };
+};
+
+/**
+ * The highest confirmed swing high strictly after `from`. Confirmed matters:
+ * an unconfirmed high would repaint, and the whole point of waiting for H3 is
+ * that it is a fact rather than a forecast.
+ */
+const highestHighAfter = (
+  window: readonly Candle[],
+  pivots: readonly { index: number; kind: "high" | "low" }[],
+  from: number,
+): number | undefined => {
+  let best: number | undefined;
+  for (const p of pivots) {
+    if (p.kind !== "high" || p.index <= from) continue;
+    if (best === undefined || window[p.index].high > window[best].high)
+      best = p.index;
+  }
+  return best;
 };

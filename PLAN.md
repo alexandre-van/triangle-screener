@@ -504,9 +504,14 @@ Write `h1` for the price of pivot H1, `l1` for L1, and so on.
 5. **Meaningful size.** `h1 − l1 ≥ config.minHeightAtr × ATR(14)` at H1,
    default 4. Filters out chop.
 
-6. **Formation gate.** L2 must be confirmed. H3 and L3 are optional; if H3 is
-   present it must satisfy rules 2 and 4, and if L3 is present it must satisfy
-   rule 3. A candidate that stops at L2 is valid and reported as `FORMING`.
+6. **Formation gate.** **H3 must be confirmed.** A candidate that stops at L2
+   is a shape that has not yet held its resistance a third time, and reporting
+   it hands the reader a forecast rather than a pattern — the point of the
+   screener is to catch a triangle whose next low is the thing worth watching
+   for. L3 is optional; if present it must satisfy rule 3.
+
+   Under the §6.1 mirror this inverts for free: a descending pattern is
+   reported once its third **low** is confirmed, waiting on H3.
 
 7. **Not already broken.** Reject if any *closed* candle after L2 has a
    `low` more than `config.breakdownTol` (default 0.5%) below the support line
@@ -597,11 +602,12 @@ has `t6 < t5` and is still described as acceptable. Do not reject on timing.
 
 ```ts
 type TriangleStatus =
-  | 'forming'          // L2 confirmed, H3 not yet
-  | 'h3_formed'        // H3 confirmed, waiting on L3
+  | 'h3_formed'        // H3 confirmed, waiting on L3 — the earliest reported
   | 'complete'         // L3 confirmed, watching for breakout above H3 line
   | 'breakout';        // a closed candle closed above the resistance line
 ```
+
+There is no `forming` state. Four pivots is not yet a pattern; see §6.3 rule 6.
 
 Invalidated patterns are dropped, not surfaced.
 
