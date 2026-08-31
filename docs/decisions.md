@@ -330,3 +330,34 @@ is a 10-minute IP ban. Found by a test asserting the 10006 mapping.
 The same ordering applies to OKX, whose `data` is `[]` on error — harmless
 there, since an empty array still parses, but the adapter checks `code` first
 regardless.
+
+---
+
+## 2026-08-31 — An unlisted pair is a 404, and upstream error text stops at the route
+
+**Decision:** `ExchangeErrorCode` gains `unknown_symbol`. OKX code 51001
+("Instrument ID does not exist") maps to it, and `/api/klines` answers **404**.
+The route no longer echoes `ExchangeError.message` to the client; it composes
+its own copy per code.
+
+**Why:** found by probing the live deployment. `GET /api/klines?symbol=
+NOTAREALCOINUSDT&tf=1d` answered **502** with the body
+
+> `okx returned code 51001: Instrument ID, Instrument ID code, or Spread ID does not exist`
+
+Two things wrong. A pair that is not listed is the caller's mistake, not a
+failure of the gateway — a 502 tells a client to retry something that will
+never succeed. And the upstream's own error text is written for an exchange
+integrator, not for someone looking at a chart.
+
+The client copy still names the provider, because §9 asks errors to say what
+failed — "Couldn't reach okx" — but it carries no upstream code or phrasing.
+
+**Bybit is not given the same mapping.** Its unlisted-symbol response is
+retCode 10001, which is also its generic parameter error, and there is no
+environment here that can call Bybit to check which. Guessing would turn real
+parameter bugs into 404s. It stays `upstream_error` until someone can verify it.
+
+**This is a stopgap.** §8.4 wants the symbol checked against the cached
+universe before it reaches an upstream URL at all. That arrives with
+`universe.ts` in Phase 5, and will catch this case before a request is made.

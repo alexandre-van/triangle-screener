@@ -174,3 +174,34 @@ describe("ExchangeError", () => {
     expect(e.status).toBe(403);
   });
 });
+
+describe("unknown symbols", () => {
+  it("is a 404, not a 502 — the pair is missing, the gateway is fine", async () => {
+    stubOnce({
+      code: "51001",
+      msg: "Instrument ID, Instrument ID code, or Spread ID does not exist",
+      data: [],
+    });
+    const res = await get("symbol=NOTAREALCOINUSDT&tf=1d");
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe("unknown_symbol");
+  });
+
+  it("names the pair and the provider, and passes no upstream text through", async () => {
+    stubOnce({
+      code: "51001",
+      msg: "Instrument ID ... does not exist",
+      data: [],
+    });
+    const body = await (await get("symbol=NOTAREALCOINUSDT&tf=1d")).json();
+    expect(body.error.message).toContain("NOTAREALCOINUSDT");
+    expect(body.error.message).toContain("okx");
+    expect(body.error.message).not.toContain("51001");
+    expect(body.error.message).not.toContain("Instrument ID");
+  });
+
+  it("still reports a genuine upstream fault as 502", async () => {
+    stubOnce({ code: "50011", msg: "Rate limit", data: [] });
+    expect((await get("symbol=BTCUSDT&tf=1d")).status).toBe(502);
+  });
+});

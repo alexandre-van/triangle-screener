@@ -84,6 +84,7 @@ export type ExchangeErrorCode =
   | "unreachable" // network failure, DNS, TLS, timeout
   | "blocked" // 403/451 — the provider refuses this region
   | "rate_limited"
+  | "unknown_symbol" // the provider has never heard of this pair
   | "bad_response" // reached it, but the payload failed its schema
   | "upstream_error"; // the provider reported a business error
 
