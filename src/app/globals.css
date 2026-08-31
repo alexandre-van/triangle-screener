@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+/*
+ * Palette — PLAN.md §9. Four hex values plus amber alpha overlays.
+ * Do not add new hues. Depth comes from the alpha overlays.
+ */
+:root {
+  --bg: #0a2503;
+  --surface: #1d1a05;
+  --text: #e6aa68;
+  --accent: #ca3c25;
+
+  --text-muted: rgb(230 170 104 / 0.62);
+  --text-faint: rgb(230 170 104 / 0.38);
+  --border: rgb(230 170 104 / 0.16);
+  --border-strong: rgb(230 170 104 / 0.3);
+  --elevate: rgb(230 170 104 / 0.05);
+
+  /* Chart tokens */
+  --chart-grid: rgb(230 170 104 / 0.07);
+  --chart-pole: rgb(230 170 104 / 0.1);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-accent: var(--accent);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-elevate: var(--elevate);
+
+  --font-sans:
+    var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono:
+    var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, monospace;
+
+  /* Type scale — §9. Nothing bigger than 28px; the chart is the hero. */
+  --text-2xs: 0.6875rem; /* 11px */
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.8125rem; /* 13px */
+  --text-base: 0.9375rem; /* 15px */
+  --text-lg: 1.25rem; /* 20px */
+  --text-xl: 1.75rem; /* 28px */
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+}
+
+/* Prices, percentages and countdowns align on the decimal. Functional, not
+ * stylistic — see §9. */
+.tabular,
+input[type="number"] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

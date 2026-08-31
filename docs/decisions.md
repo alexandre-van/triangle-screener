@@ -188,3 +188,43 @@ Found while checking Hermès's mirrored candidate, where the bound has to reject
 a 41% overshoot. Expressed in units of the leg's own range the rule is
 scale-free and mirror-safe. The §12 mirror property test should catch any
 regression here.
+
+---
+
+## 2026-08-31 — Phase 1 scaffold: deviations from §2
+
+**Next.js 16, not 15.** `create-next-app@latest` now emits Next 16.3.3 with
+React 19.2. Nothing in the plan depends on a Next 15 API, so pinning backwards
+to get an older major would have bought nothing but a stale dependency. §2
+updated in the same commit.
+
+**pnpm is installed with `npm i -g pnpm`, not corepack.** Homebrew's Node
+formula ships without corepack, so `corepack enable` fails on this machine.
+`packageManager` in `package.json` still pins the version, and CI uses
+`pnpm/action-setup`, which reads it.
+
+**Node 22 in CI, Node 25 locally.** The plan asks for Node 22 and CI runs it.
+The local machine is on Homebrew's Node 25; `engines` is `>=22`. Worth
+remembering if something builds locally and not in CI.
+
+**Playwright runs on port 3117, and never reuses a running server.** The
+default `reuseExistingServer: !process.env.CI` attached the smoke test to an
+unrelated app already serving port 3000 and asserted against its markup. A
+fixed uncommon port plus `reuseExistingServer: false` means the E2E suite can
+only ever test this app's own production build.
+
+**Prettier does not format the prose docs.** `PLAN.md`, `CLAUDE.md` and
+`docs/` are in `.prettierignore`: prettier reflows their hand-wrapped
+paragraphs and turns a two-line change into a 274-line diff. Code, configs and
+`README.md` are formatted normally.
+
+**`.env.example` is not committed.** The environment this scaffold was built in
+refuses writes to `.env*` paths. The variables it would have held are
+documented as a table in `README.md` instead, which is the copy people actually
+read. Add the file by hand if you want it.
+
+**Purity of `src/lib/patterns/` is enforced by ESLint**, not only by
+convention: `no-restricted-globals` on `fetch`, `Date` and `console`, and
+`no-restricted-properties` on `Math.random` and `Date.now`, scoped to that
+directory. The 90% coverage gate lives in `vitest.config.ts` as a per-glob
+threshold, so `pnpm test:coverage` fails the build rather than reporting.
